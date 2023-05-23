@@ -102,36 +102,15 @@ class GoalSelector:
             rospy.logwarn('Failed to read Robot Position')
 
     def array_process(self):
-        # Here need to write code that includes self.meanMSG dimesnions. Note By running print of the dimensions, and
-        # manually moving robot around, it is confirmed that the dimensions of the variance Matrix from the gabp is
-        # always the same as the dimensions of the mean Matrix i.e they update simultanesouly :). So for the purpose of
-        # method, will use the dimensions from mean Matrix (but could also be done using the variance matrix).
         if self.meanMSG is None or self.varMSG is None:
             return rospy.logwarn('array_process has failed because no mean/variance data received yet')
         else:
-            ## Array Process
-
-            # So the input data is not in numpy format, it has 2 dim. dim[0], has been defined by Callum as x label
-            # and dim[1] as y label. Note, I checked by printing them, it is reshape(dim[0], dim[1]). It depends on the
-            # data ur using but for callums, for the data to be sorted right its this way.
-            # And note the output mean_array.shape, it is (x,y). (Note that .shape returns  rows, columns, hence
-            # in mean_array, x is the row, y is the column). The indexing reference is actually bottom left of the map
-            # u see in rviz (check onenote for further explanation)
             mean_array = np.array(self.meanMSG.data).reshape((self.meanMSG.layout.dim[0].size,
                                                               self.meanMSG.layout.dim[1].size))
-            # print("mean_array dims x,y:", mean_array.shape)
-            # Note when I drive around, it is apparant that the max indices are given from bottom left array. I.e the
-            # origin is bottom left. I can solve by doing this flip. Now, say I have mapped the max mean conc. point,
-            # if i move down in the map (i.e negative y using cad coords), then the max indice should not change, the
-            # row should instead simply get smaller
-            # Need to flip axis 1, which is the columns, which are y in mean_array.
-            # mean_array = np.flip(mean_array, axis=1)
             self.mean_array = mean_array
 
             var_array = np.array(self.varMSG.data).reshape((self.varMSG.layout.dim[0].size,
                                                             self.varMSG.layout.dim[1].size))
-            # print("var_array dims x,y:", var_array.shape)
-            # var_array = np.flip(var_array, axis=1)
             self.var_array = var_array
             rospy.loginfo('array_process method has succeeded')
             return
@@ -141,11 +120,6 @@ class GoalSelector:
             return rospy.logwarn('No OCCUPANCY data received on occ_process method')
         else:
             try:
-                # Want to put the occ data in the same orientation as the mean and var. The correct input is height,
-                # then width, but I need to transpose it as well. AFter this transpose x will be in rows, y will be in
-                # columns, and the indexing (which in python corresponds to top left array) will inf act be relative to
-                # bottom left of graph in rviz. That is x if the exact same, but y is flipped to the graph uy see in
-                # rviz.
                 occ_array = np.array(self.occMSG.data).reshape((self.occMSG.info.height, self.occMSG.info.width))
                 occ_array = occ_array.transpose()
                 print("occ_array dims x,y:", occ_array.shape)
@@ -168,7 +142,6 @@ class GoalSelector:
             return rospy.logwarn('No MOVE BASE OCCUPANCY data received on occ_process method')
         else:
             try:
-                # Same as other.
                 mb_occ_array = np.array(self.move_base_occMSG.data).reshape((self.move_base_occMSG.info.width,
                                                                              self.move_base_occMSG.info.height))
                 mb_occ_array = mb_occ_array.transpose()
@@ -189,16 +162,6 @@ class GoalSelector:
         if self.occ_array is None:
             return rospy.logwarn('No occ_array data received on occ_process method')
         else:
-            # Define the kernel for morphological opening as a 3x3 array of ones. The choice of the kernel size in
-            # morphological operations depends on the specific image processing task and the characteristics of the
-            # image being processed. A smaller kernel is useful when we want to preserve small details and fine
-            # structures in the image. However, if the kernel is too small, it may not be effective in removing small
-            # noise or small objects in the image. On the other hand, a larger kernel is useful for removing larger
-            # objects or smoothing the image, but it may also remove some small details in the image. Therefore, the
-            # choice of kernel size is usually a trade-off between the need for removing noise or objects and the need
-            # for preserving important details in the image. In the case of the frontier detection, the choice of 3x3
-            # kernel seems to be a reasonable size to remove small noise in the image while preserving the overall
-            # structure of the occupied cells.
             kernel = np.ones((3, 3), np.uint8)
 
             # Dilate the occupied cells using a kernel
@@ -209,15 +172,7 @@ class GoalSelector:
 
             # Compute the difference between the eroded and the original image
             diff = eroded - self.occ_array
-
-            # Get the indices of the frontier cells by finding the non-zero elements in the difference image and
-            # transposing the result to get a (n, 2) numpy array of frontier cell indices. np.nonzero
-            # returns the indices of the cell that are non zero. the colummns it returns are (row, column) i.e x, y
             self.frontier_indices = np.transpose(np.nonzero(diff))
-
-            ## Now to get the frontier costs --> computing a cost value for each frontier cell in the frontier_indices
-            # array. These cost values will be used to sort the frontier cells in descending order of importance, with
-            # the most important cell appearing first in the frontier array.
 
             # Initializes an empty list called dists to store the Euclidean distance to the nearest unexplored cell
             # for each frontier cell.
@@ -309,8 +264,6 @@ class GoalSelector:
                 temp_cost_array[temp_max_indices[0]][temp_max_indices[1]] = 0
                 temp_max_indices = np.unravel_index(np.argmax(temp_cost_array), temp_cost_array.shape)
 
-            #self.rank_matrix_2 = np.empty(shape=(0, 0))
-            #self.rank_matrix_2 = np.array([0, 1, 2])
             self.rank_matrix_2 = []
             for t in range(self.goals_ordered_matrix.shape[0]):
                 indexi = self.goals_ordered_matrix[t][1]
@@ -344,12 +297,6 @@ class GoalSelector:
             print(self.rank_matrix_2.shape)
 
             for index in range(self.rank_matrix_2.shape[0]):
-                # For Now going to compare checkl against move_base map. Choice here, probably best move base because
-                # whilst move base could do some weird thing from time to time and mess up the local map and hence map,
-                # wheras cart wouldnt, it doesnt matter because at that point the sim breaks and would need to start
-                # again.  And obv move base has the cost map and cleaner/better occ grid to work with for obstacle
-                # avoidance.
-
 
                 # In our goals_ordered stored matrix we have the elements x and y relative to bottom left mean/var array
                 self.x_elem_goal_bot_left = self.rank_matrix_2[index][1]
@@ -360,10 +307,6 @@ class GoalSelector:
 
                 # Find cords where cost row is relative to odom
                 x_odom_cost = x_bot_left_cost + self.x_odom   # I need to use x_odom here because x_bot_left_cost is
-                # also using that array (i.e it has the same bottom left/ extracted odom frame as CARTmap.  Hence this
-                # is how I can get the x cord relative to odom. NOte if i were going to do the CARTmap topic thing for
-                # the gabp node i think i will just have to calc the self.x/y_odom position and that will remain const
-                # because map won't get bigger.
                 y_odom_cost = y_bot_left_cost + self.y_odom  # Same here, y_odom is necessary, NOT y_mb_odom
 
                 # Converting the coords to movebase bottom left (here you can also convert to CART bott left (again))
