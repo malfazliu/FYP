@@ -1,0 +1,421 @@
+###
+
+Building cartographer from source.
+
+Files/code from official site dont work. The reason is that the devs of cartographer have upgraded the program again since they made changes to the documentation, and some of the previous operations are no longer applicable.
+
+So for Melodic:
+
+1)Environmental configuration:
+
+--- First install dependencies --------------------------------------------------------
+
+sudo apt-get update
+
+sudo apt-get install -y google-mock libboost-all-dev  libeigen3-dev libgflags-dev libgoogle-glog-dev liblua5.2-dev libprotobuf-dev  libsuitesparse-dev libwebp-dev ninja-build protobuf-compiler python-sphinx  ros-melodic-tf2-eigen libatlas-base-dev libsuitesparse-dev liblapack-dev libpcl-dev pcl-tools automake
+
+# In List form:
+
+google-mock 
+libboost-all-dev  
+libeigen3-dev 
+libgflags-dev 
+libgoogle-glog-dev 
+liblua5.2-dev 
+libprotobuf-dev  
+libsuitesparse-dev 
+libwebp-dev 
+ninja-build 
+protobuf-compiler 
+python-sphinx  
+ros-melodic-tf2-eigen 
+libatlas-base-dev 
+libsuitesparse-dev 
+liblapack-dev 
+libpcl-dev 
+pcl-tools 
+automake
+
+# And note the -y arg just removes any user manual input in the installation process; 'yes' is done for you.
+
+---- Install the ceres solver ---------------------------------------------------------
+
+cd 
+git clone https://github.com/Tengyun-Mo/ceres-solver.git
+cd ceres-solver
+mkdir build
+cd build
+cmake ..
+make -j4 
+sudo make install
+
+# Note: (The default path is: usr/local/include​​)
+#
+Note: The command "make -j4" is used to build a software project using the GNU make tool with parallel processing enabled.
+
+The "-j4" option tells make to execute up to 4 jobs (build processes) simultaneously, which can speed up the build process on multi-core processors. The number after "-j" specifies the maximum number of jobs that can be executed in parallel.
+#
+--- Install protobuf 3.0 --------------------------------------------------------------
+
+git clone https://github.com/google/protobuf.git
+
+cd protobuf
+
+git checkout v3.6.1
+
+mkdir build
+
+./autogen.sh
+
+./configure
+
+make -j2
+
+sudo make install
+
+sudo ldconfig
+
+# Okay so I was getting the error: configure: WARNING: no configuration information is in third_party/googletest,    after I was doing /configure
+# To fix go into /protobuf/thirdparty folder. Delete manually the googletest folder. Then cd ../ back into the /protobuf/
+# Now run: git submodule update --init --recursive     (you should hoepfully see some cloning action and no fatal/Failed words)
+# Now run again: ./autogen.sh
+# Now run: ./configure
+# Hopefully now you get no errors
+# Proceed with the next steps.
+
+# When I: sudo ldconifg    , I get the following in return.
+/sbin/ldconfig.real: /usr/local/cuda-10.2/targets/x86_64-linux/lib/libcudnn.so.7 is not a symbolic link
+
+/sbin/ldconfig.real: /usr/local/lib/liboctomap.so.1.8 is not a symbolic link
+
+/sbin/ldconfig.real: /usr/local/lib/libdynamicedt3d.so.1.8 is not a symbolic link
+
+/sbin/ldconfig.real: /usr/local/lib/liboctomath.so.1.8 is not a symbolic link
+#
+# some of the libraries in the specified paths are not symbolic links. This is not  necessarily an error, but it means that the ldconfig command will not update the symbolic links and cache for those libraries.
+# Regarding the first one, shouldnt be an issue: I havent actually installed that one earlier, likely its already there.
+# same for the second.
+# same for third.
+# same for fourth. So I'm assuming its fine to proceed ...
+# Note that:
+#  
+You can check the installation instructions or documentation for the library to determine whether the absence of symbolic links is expected.
+
+If the absence of symbolic links is not expected, you may need to manually create the symbolic links to allow the linker to find the libraries. This can usually be done using the ln command. For example, to create a symbolic link for /usr/local/cuda-10.2/targets/x86_64-linux/lib/libcudnn.so.7, you can run the command (from chatgpt):
+
+sudo ln -s /usr/local/cuda-10.2/targets/x86_64-linux/lib/libcudnn.so.7 /usr/local/cuda-10.2/targets/x86_64-linux/lib/libcudnn.so
+
+(Note that the exact command may vary depending on the library and the paths involved).
+#
+
+
+--- Install Cartographer -------------------------------------------------------------
+
+git clone https://github.com/googlecartographer/cartographer.git
+
+cd cartographer
+
+mkdir build
+
+cd build
+
+cmake ..
+
+make -j4
+
+sudo make install
+
+
+# After: I cmake ..     , I get this in orange:
+# CMake Warning (dev) at /opt/cmake-3.21.1-linux-x86_64/share/cmake-3.21/Modules/FindPackageHandleStandardArgs.cmake:438 (message):
+  The package name passed to `find_package_handle_standard_args` (Lua) does
+  not match the name of the calling package (LuaGoogle).  This can lead to
+  problems in calling code that expects `find_package` result variables
+  (e.g., `_FOUND`) to follow a certain pattern.
+Call Stack (most recent call first):
+  cmake/modules/FindLuaGoogle.cmake:211 (FIND_PACKAGE_HANDLE_STANDARD_ARGS)
+  CMakeLists.txt:41 (find_package)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+#
+# Doesnt seem to be an issue, after these lines the rest is executed well.
+
+
+# After I: sudo make install:
+#
+[ 57%] Building CXX object CMakeFiles/cartographer.transform.transform_interpolation_buffer_test.dir/cartographer/transform/transform_interpolation_buffer_test.cc.o
+make[2]: *** No rule to make target '/home/fatman/catkin_ws/devel/lib/libspqr.a', needed by 'cartographer.transform.transform_interpolation_buffer_test'. Stop.
+CMakeFiles/Makefile2:310: recipe for target 'CMakeFiles/cartographer.transform.transform_interpolation_buffer_test.dir/all' failed
+make[1]: *** [CMakeFiles/cartographer.transform.transform_interpolation_buffer_test.dir/all] Error 2
+Makefile:145: recipe for target 'all' failed
+make: *** [all] Error 2
+#
+Firstly this was the same error I was getting when doing from the orginal website build: 
+catkin_make_isolated --install --use-ninja
+AND NOTE IT WAS GOING to catkin.
+And if i locate where the file is btw using:
+find / -name libspqr.a 2>/dev/null
+It actually shows my catkin_ws_backup one as well.
+/home/fatman/catkin_ws_backup/devel/lib/libspqr.a
+So its in both of these folders I think
+CAREFUL i lately realised that this isnt the backup i made. catkin_wsBACKUP is the correct file. Its now in home directory
+#
+The error message you received indicates that there is a missing dependency for the target cartographer.transform.transform_interpolation_buffer_test. Specifically, the build system is looking for the file /home/fatman/catkin_ws/devel/lib/libspqr.a, which is not found, and therefore, the build fails.
+
+To resolve this issue, you need to make sure that the missing dependency, libspqr.a, is built and installed properly. This might require building and installing the dependency manually or using a package manager to install it
+#
+Okay so since its in backup (in catkin_ws_backup, its not in the catkin_wsBACKUP i made) , I've checked the backup (8tH fEB) on onedrive to see if its there and its not there either. 
+So libspqr.a doesn't exist in /home/fatman/catkin_ws/devel/lib/. or in the backup catkin  made or in the catkin I saved on 8th feb (much before i started the cart install stff)
+So I dont think anything wnt wrong when halfway through the offical websoit install i started a new catkin_ws and saved the catin_wsBACKUP.
+Only catkin_ws_backup (one that is a backup from way befoere (i think) has the libspqr.a file (and i guess any other ones)
+But before I do that, in catkin_ws_backup where it is located: attempting:
+sudo make install libspqr.a
+which shows:
+[sudo] password for fatman: 
+make: *** No rule to make target 'install'. Stop.
+
+# Also tried: 
+sudo apt-get install libspqr-dev
+Reading package lists... Done
+Building dependency tree       
+Reading state information... Done
+E: Unable to locate package libspqr-dev
+
+#Turns out libspqr.a exists in /usr/lib/x86_64-linux-gnu.
+
+# when I echo my ld library i get this: /usr/local/lib:/home/fatman/catkin_simulink/devel/lib:/home/fatman/catkin_vins/devel/lib:/home/fatman/catkin_ben/devel/lib:/home/fatman/catkin_build/devel/lib:/home/fatman/catkin_ws/devel/lib:/opt/ros/melodic/lib:/opt/ThirdParty-5.0/platforms/linux64Gcc/gperftools-svn/lib:/opt/paraviewopenfoam54/lib/paraview-5.4:/opt/openfoam5/platforms/linux64GccDPInt32Opt/lib/openmpi-system:/opt/ThirdParty-5.0/platforms/linux64GccDPInt32/lib/openmpi-system:/usr/lib/x86_64-linux-gnu/openmpi/lib:/home/fatman/OpenFOAM/fatman-5.0/platforms/linux64GccDPInt32Opt/lib:/opt/site/5.0/platforms/linux64GccDPInt32Opt/lib:/opt/openfoam5/platforms/linux64GccDPInt32Opt/lib:/opt/ThirdParty-5.0/platforms/linux64GccDPInt32/lib:/opt/openfoam5/platforms/linux64GccDPInt32Opt/lib/dummy:/home/fatman/cvbridge_build_ws/devel/lib:/usr/local/cuda-10.2/lib64
+# /home/fatman/catkin_ws/devel/lib is listed before /usr/lib/x86_64-linux-gnu (which is where the libspqr is located in the system files). I tried temporarily removing the fatman directory then running cmake .. again in cartographer/build --- same error --- for some reason it wants the catkin_ws directory stil.
+# I manually copied libspqr.a to the devel/lib in ctakin_ws then ran cmake again, and it solved that one.  But now I get /home/fatman/catkin_ws/devel/lib/libcholmod.a issue.
+
+#Okay I have tried prioritising /usr/lib/x86_64-linux-gnu, by doing this:
+export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
+This put it at the top of my LD_LIBRARY_PATH. Then I tried cmake .. and i still was getting the same errors.
+the catkin_ws I have atm -- renaming copying it and saving it as catkin_wsBACKUP2
+in the catkin_ws
+I am going into build folder and ...
+cmake ..
+make
+Yeah not working
+Only thing that got executed is within catkin_ws/build
+'make'
+it built some target octomap_server stuff
+So I hav just deleted and reinstalled catkin_wsBACKUP2 to catkin_ws
+
+Now again copying making catkin_wsBACKUP2 and in ctakin_ws tyring
+catkin_make
+Stil didnt work. Again deleted catkin_ws and reinstated BACKUP2 as catkin_ws
+just gonna manully add libcholmod.a to the catkin_ws/devel/lib :/
+
+so ive copied 
+libspqr.a
+libcholmod.a
+libccolamd.a
+libcamd.a
+libcolamd.a
+libamd.a
+libsuitesparseconfig.a
+libcxsparse.a
+
+With this no errors but make -j4 finished on 56%:
+butttt the sudo make install started on 56 and finsihed it to 100 :)?
+
+And this bit is now done.
+
+
+--- If absl cannot be found -------------------------------------------------------------------
+
+git clone https://github.com/abseil/abseil-cppmkdir .git​​
+
+Open the cmakelists in the abseil-cpp package to add c++11 support​:
+
+​set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS } -std=c++11")​
+
+build && cd build​
+
+cmake .. -DBUILD_SHARED_LIBS=ON​​​​
+
+​make
+
+sudo make install​​
+
+# Note: I didn't encounter this error 
+
+
+
+---Change cartographer's CMakeList.txt file (2 places) and cartographer-config.cmake.in file (1 place) --------------------------------------------------------
+
+CMakeList.txt change No. 1
+
+find_package(Abseil REQUIRED) --- change to--> find_package(absl REQUIRED)​​​​
+
+CMakeList.txt change No. 2: #The default library file is standalone_absl​
+target_link_libraries(${PROJECT_NAME} PUBLIC ${PROTOBUF_LIBRARY}​
+absl::base​​​
+absl::synchronization​​​​
+absl::strings
+​​​​absl::flat_hash_map​​​​
+absl::numeric​​​​
+absl::flags)​
+
+Then recompile.
+
+​cartographer-config.cmake.in 1 place:
+​find_package(Abseil ${QUIET_OR_REQUIRED_OPTION}) Abseil changed to absl​​​​
+
+
+# Note: I have not had to touch any of this, my stuff was alerady absl. also in the target_link_library thing i have all of those absl:: listed, but also some more. leaving for now.
+
+
+
+--- Install cartographer_ros ------------------------------------------------------------------
+
+mkdir -p ~/catkin_ws/src    # Note -p means it makes it only if it doesn't exist.
+cd ~/catkin_ws/src 
+git clone https://github.com/googlecartographer/cartographer_ros.git
+
+--- Make changes to CMakeList.txt of cartographer_ros, 2 places -----------------------------------
+
+The modifications of cartographer_ros and cartographer_rviz are the same:​
+
+find_package(Abseil REQUIRED) --> find_package(absl REQUIRED)​
+
+and then recompile.
+
+catkin_make
+
+# In catkin_ws/src/cartographer_ros/carographer_ros & In catkin_ws/src/cartographer_ros/carographer_rviz the changes are already made. So I didnt need to recompile. Note that if I were to recompile im pretty sure i would do it in these directories; i.e execute catkin_make for each of them individually.
+
+
+--- If there is an undefined application, please pay attention to the version of Ceres and prtobuf, and modify it in Cmakelists.test -----------------------------------------------------------------
+Download data package https://storage.googleapis.com/cartographer-public-data/bags/backpack_2d/cartographer_paper_deutsches_museum.bag
+Run ​roslaunch cartographer_ros demo_backpack_2d.launch bag_filename:=${HOME}``/Downloads/cartographer_paper_deutsches_museum``.bag​the program
+The latest configuration of the cartographer environment (2021.11.11)_github_02
+
+# Note done this one
+
+-------------------------------------------------------------------------------------
+
+Okay tried running my launch file. Got the no node error. The nodes should be present in catkin_ws/devel/lib. But theyre not
+
+copying catkin_ws to catkin_wsBACKUP2
+then in catkin_ws doing:
+catkin build
+
+stuff not working
+
+even tried it with the ninja command -- it breaks down
+I made a new catkin Cart
+did this
+git clone https://github.com/googlecartographer/cartographer_ros.git
+in the root of the catkin, i ran catkin_make and got  a bunch of protoc errors with latest version stuff.
+
+Trying to fix: 
+for apt-get:
+export PATH=/usr/bin:$PATH
+protoc --version  
+( i get 3.0.0)
+
+and for source:
+export PATH=/usr/local/bin:$PATH
+protoc --version
+(i get 3.6.1)
+
+gonna delete the new one
+in protobuf folder in home:
+sudo make uninstall
+
+it worked --- now its 3.0.0
+
+tried catkin_make again still floped
+
+What if i reinstall the 3.6.1 version then try find a way for the system to look at the src one instead?
+also look at more similar issues ppl have had. 
+
+Okay so i sudo-apt removed all the cartographer stuff currently on the system and it helped a lot. the catkin_make within catkin_cart when from 76% to 81% AND NOW ONLY ERRORS (I THINK) are only protoc stuff.
+OKAY SO THIS WAS THE ISSUE -- ALL THE ONES IN APT.
+So i made sure my protobuf from source was 3.6.1, then i catkin_make in /catkin_CART 
+AND IT WORKS :)) TO 100%.
+----- SO PROBABLY IN HINDISGHT, THE OFFICIAL WEBSITE STEPS CAN WORK, PREOVIDED I DELETED ALL THE SUDO APT CARTOGRAPHER STUFF (I did try this, i got an error and trackd back, probably pursing this would have been quicker :/)
+Okay but to run my Husky_cart_example in /MAL, I need husky_navigation_cartographer, and to get this; i need to reinstall the cart stuff in apt. Perhaps It wont cause conflicts If i download now, seeing as cart from source was now built succesfully. 
+But to be safe, just going to build the husky_navigation_cart in catkin_CARThusky
+
+mkdir -p ~/catkin_CARThusky/src    # Note -p means it makes it only if it doesn't exist.
+cd ~/catkin_ws/src 
+git clone http://github.com/husky/husky_cartographer_navigation.git
+cd ../
+catkin_make
+#####################################################################
+OKAY BIG NOTE: IF you want to add source's to bashrc. i.e i needed:
+
+# MAKE SURE YOU ADD THEM IN THE ORDER OF CREATION; SO AFTER ALL THE OTHER ONES ON THE LIST;
+# 
+You should add the setup.bash for the new catkin workspace to your .bashrc file after any existing setup.bash files for other workspaces. This is because the setup.bash file sets environment variables that are needed for the ROS environment to function correctly, such as the ROS_PACKAGE_PATH. By sourcing the setup.bash file for your new workspace after the others, you ensure that the environment variables for the new workspace are set correctly and do not conflict with those of other workspaces.
+#
+
+source ~/catkin_CART/devel/setup.bash
+source ~/catkin_CARThusky/devel/setup.bash
+
+THEN DONT FORGET for it to have an effect, after saving:
+you need to 
+source ~/.bashrc
+
+But it only sees the last one: I think its because it has similar vairables. So the last one overwrites it. 
+Because I only need husky.lua from husky_navigation_cartographer along with the cartographer_demo.launch Im just moving (copying) these to their respective lcoations inc cartographer_ros.
+Also in cartographer_demo.launch im changing the (find directory to $(find cartographer_ros)/configuration_files). AND hence also removing source ~/catkin_CARThusky/devel/setup.bash from bashrc.
+
+
+Okay trying my example cartographer stuff: getting:
+
+[ INFO] [1677969452.436456088, 1304.730000000]: Requesting the map...
+E0304 22:37:32.436841   972 solver.cc:507] Terminating: Invalid configuration. Solver::Options::num_linear_solver_threads = -1. Violated constraint: Solver::Options::num_linear_solver_threads > 0
+[ERROR] [1677969452.437052645, 1304.740000000]: E0304 22:37:32.000000   972 solver.cc:507] Terminating: Invalid configuration. Solver::Options::num_linear_solver_threads = -1. Violated constraint: Solver::Options::num_linear_solver_threads > 0
+munmap_chunk(): invalid pointer
+[cartographer_node-1] process has died [pid 972, exit code -6, cmd /home/fatman/catkin_CART/devel/lib/cartographer_ros/cartographer_node -configuration_directory /home/fatman/catkin_CART/src/cartographer_ros/cartographer_ros/configuration_files -configuration_basename husky.lua imu:=/imu/data odom:=/odometry/filtered scan:=/scan __name:=cartographer_node __log:=/home/fatman/.ros/log/21bb3bc4-badd-11ed-bd4a-fc34971e754f/cartographer_node-1.log].
+log file: /home/fatman/.ros/log/21bb3bc4-badd-11ed-bd4a-fc34971e754f/cartographer_node-1*.log
+
+
+# i tried commenting out move_base node -- i still get the same error
+Comparing the cartograher_demo.launch files ---> nothing looks wrong;
+issue probably lies in husky.lua.
+I am getting no map to odom link btw.
+
+# okay been attempting to solve
+in documentation there are 3 'thread' found
+i HAVE TRIED 2 IN THE LUA NOT WORKED PERHAPS TRY NEXT ONE :?
+# maybe try running practise lua files; see if u get errors. 
+# search 'num_linear_solver_threads' on google
+# btw i checked rqt_graph --> it literally dies the cartographer node (check active nodes) there is no cartpgrapher_node :(
+# maybe try restarting pc.
+
+#I am commenting out the move_base node to simpify the problem.
+
+#Same issue for bag file examples.
+# as in with the submap thing and everything
+
+# Trying website download again
+# catkin_TEST_CART
+# I removed the 
+<depend>libabsl-dev</depend>
+from the package.xml in 'cartographer' --> not cart ros.
+Btw Protoc 3.6.1 is in use. 
+
+#sourcing it in bashrc
+#IT WORKSS. :)
+
+
+##################################################################################
+For the examples, I have put husky.lua both in 
+/home/fatman/catkin_TEST_CART/install_isolated/share/cartographer_ros/configuration_files         (IM PRETTY SURE IT CALLS THIS ONE IN MY SIM)
+and
+/catkin_TEST_CART/src/cartographer_ros/cartographer_ros/configuration_files
+
+And for conifguration Demo, its in:
+home/fatman/catkin_TEST_CART/install_isolated/share/cartographer_ros/
+and 
+~/catkin_TEST_CART/src/cartographer_ros/cartographer_ros/launch
+
+
+
+
+ 
+
+

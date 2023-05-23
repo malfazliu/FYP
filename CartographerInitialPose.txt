@@ -1,0 +1,78 @@
+
+Trying to initalise cartographer:
+
+From First thread:
+
+rosservice call /finish_trajectory 1
+rosrun cartographer_ros cartographer_start_trajectory  -configuration_directory <path to your cartographer_ros configuation files directory> -configuration_basename <name of your config (.lua) file> -initial_pose '{to_trajectory_id = 0, relative_pose = { translation = { 0., 0., 0. }, rotation = { 0.0, 0.0, 0.0 } } }'
+
+
+Applying my version :
+
+rosservice call /finish_trajectory 1; rosrun cartographer_ros cartographer_start_trajectory  -configuration_directory '$(find husky_cartographer_navigation)/config' -configuration_basename 'husky.lua' -initial_pose '{to_trajectory_id = 0, relative_pose = { translation = { 2.0, -31.9, 0.1323 }, rotation = { 0.0, 0.0, 0.0 } } ,timestamp = 0}'
+
+rosservice call /finish_trajectory 1; rosrun cartographer_ros cartographer_start_trajectory  -configuration_directory '$(find husky_cartographer_navigation)/config'  -configuration_basename 'husky.lua' -initial_pose '{to_trajectory_id = 0, relative_pose = { translation = { 2.0, -31.9, 0.1323 }, rotation = { 0.0, 0.0, 0.0 } } }'
+
+
+
+
+Note: initial_pose is only available through the start_trajectory executable.
+So you can call that executable directly rosrun cartographer_ros cartographer_start_trajectory. Only way??? It seems like it.
+
+rosrun cartographer_ros cartographer_start_trajectory ... -configuration_directory '${HOME}/xxx/xxx/cartographer_ros/cartographer_ros/configuration_files' -configuration_basename 'backpack_2d_localization.lua' -initial_pose '{to_trajectory_id = 0, relative_pose = { translation = { 0, 0, 0}, rotation = {0., 0., 0., } } }'
+
+
+
+
+
+
+rosservice call /finish_trajectory 1; rosrun cartographer_ros cartographer_start_trajectory  -configuration_directory '$(find cartographer_ros)/configuration_files' -configuration_basename 'husky.lua' -initial_pose '{to_trajectory_id = 0, relative_pose = { translation = { 2.0, -31.9, 0.1323 }, rotation = { 0., 0., 0., } } }'
+
+
+Latest???
+
+rosservice call /start_trajectory "configuration_directory: '$(find cartographer_ros)/configuration_files'  configuration_basename: 'husky.lua' use_initial_pose: true initial_pose: position: {x: 2.0, y: -31.9, z: 0.1323} orientation: {x: 0.0, y: 0.0, z: 0.0, w: 0.0} relative_to_trajectory_id: 0"
+
+
+rosservice call /start_trajectory  "configuration_directory: '$(find husky_cartographer_navigation)/config'  configuration_basename: 'husky.lua' use_initial_pose: false initial_pose: position: {x: 2.0, y: -31.9, z: 0.1323} orientation: {x: 0.0, y: 0.0, z: 0.0, w: 0.0} relative_to_trajectory_id: 0"
+
+
+
+
+
+rosservice call /start_trajectory "configuration_directory: 'home/fatman/catkin_TEST_CART/install_isolated/share/cartographer_ros/configuration_files' configuration_basename: 'husky.lua' use_initial_pose: true initial_pose: position: {x: 2.0, y: -31.9, z: 0.1323} orientation: {x: 0.0, y: 0.0, z: 0.0, w: 0.0} relative_to_trajectory_id: 0"
+
+
+
+
+# The following should be right --- but no use_inital_pose
+rosservice call /finish_trajectory 1; rosservice call /start_trajectory "configuration_directory: '/home/fatman/catkin_TEST_CART/install_isolated/share/cartographer_ros/configuration_files/'
+configuration_basename: 'husky.lua'
+use_initial_pose: true
+initial_pose:
+position: {x: 2.0, y: -31.9, z: 0.1323}
+orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
+relative_to_trajectory_id: 0"
+
+
+#from python thing:
+rosservice call /finish_trajectory 1;rosservice call /start_trajectory "{configuration_directory: "/home/fatman/catkin_TEST_CART/install_isolated/share/cartographer_ros/configuration_files/", configuration_basename: "husky.lua", use_initial_pose: "true", initial_pose:  {position: {x: 7.0, y: 0.0, z: 0.0}, orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}}, relative_to_trajectory_id: 0}"
+
+
+
+rosservice call /finish_trajectory 0; rosservice call /start_trajectory "{configuration_directory: "/home/fatman/catkin_TEST_CART/install_isolated/share/cartographer_ros/configuration_files/", configuration_basename: "husky.lua", use_initial_pose: "true", initial_pose:  {position: {x: 2.0, y: -31.9, z: 0.0}, orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}}, relative_to_trajectory_id: 0}"
+
+rosservice call /start_trajectory "{configuration_directory: "/home/fatman/catkin_TEST_CART/install_isolated/share/cartographer_ros/configuration_files/", configuration_basename: "husky.lua"}",
+
+
+
+
+
+####### This works. JUst change finish traj number
+
+TRUE
+rosservice call /finish_trajectory 0; rosservice call /start_trajectory "{configuration_directory: "/home/fatman/catkin_TEST_CART/install_isolated/share/cartographer_ros/configuration_files/", configuration_basename: "husky.lua", use_initial_pose: "true", initial_pose:  {position: {x: 2.0, y: -31.9, z: 0.0}, orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}}, relative_to_trajectory_id: 0}"
+
+FALSE
+rosservice call /start_trajectory "{configuration_directory: "/home/fatman/catkin_TEST_CART/install_isolated/share/cartographer_ros/configuration_files/", configuration_basename: "husky.lua", use_initial_pose: "false", initial_pose:  {position: {x: 2.0, y: -31.9, z: 0.0}, orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}}, relative_to_trajectory_id: 0}" --wait
+
